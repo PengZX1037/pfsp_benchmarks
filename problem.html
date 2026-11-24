@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The problem — PFSP Benchmarks</title>
+  <meta name="description" content="Definition, makespan recurrence, complexity, lower bounds and conventions for the permutation flow shop scheduling problem with makespan objective.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="page-head">
+    <div class="eyebrow">Introduction</div>
+    <h1>The permutation flow shop scheduling problem</h1>
+    <p class="lead">One of the most studied problems in scheduling theory. It is simple to state and very hard to solve,
+      and decades of work have gone into it.</p>
+  </div>
+
+  <div class="two-col">
+    <article class="narrow">
+      <h2 id="definition" style="margin-top:.8em">Definition</h2>
+      <p>A set of <var>n</var> jobs must be processed on <var>m</var> machines arranged in series. Every job visits the
+        machines in the same order 1, 2, …, <var>m</var>, and job <var>j</var> needs an uninterrupted processing time
+        <var>p<sub>ij</sub></var> ≥ 0 on machine <var>i</var>. A machine processes at most one job at a time and a job
+        is on at most one machine at a time. In the <em>permutation</em> flow shop the jobs must also be processed
+        <strong>in the same order on every machine</strong>, so a solution is a permutation
+        π = (π<sub>1</sub>, …, π<sub>n</sub>) of the jobs.</p>
+      <p>The objective considered on this site is the <strong>makespan</strong> <var>C</var><sub>max</sub>, the
+        completion time of the last job on the last machine. In the three-field notation of Graham et al. the problem is
+        written <var>F<sub>m</sub></var> | prmu | <var>C</var><sub>max</sub>.</p>
+
+      <h2 id="recurrence">Evaluating a permutation</h2>
+      <p>Write <var>C</var>(<var>k</var>, <var>i</var>) for the completion time of the <var>k</var>-th job of the sequence on machine <var>i</var>. With <var>C</var>(0, <var>i</var>) = <var>C</var>(<var>k</var>, 0) = 0:</p>
+      <div class="formula">
+        <var>C</var>(<var>k</var>, <var>i</var>) = max{ <var>C</var>(<var>k</var>−1, <var>i</var>), <var>C</var>(<var>k</var>, <var>i</var>−1) } + <var>p</var><sub><var>i</var>,π<sub><var>k</var></sub></sub>,
+        &nbsp;&nbsp; <var>k</var> = 1…<var>n</var>, <var>i</var> = 1…<var>m</var> <br>
+        <var>C</var><sub>max</sub>(π) = <var>C</var>(<var>n</var>, <var>m</var>)
+      </div>
+      <p style="margin-top:1em">This takes O(<var>nm</var>) time, and it is exactly what the
+        <a href="checker.html">solution checker</a> and our validation scripts compute.</p>
+
+      <h2 id="example">A small example</h2>
+      <p>Below are 5 jobs on 3 machines. Change the job order and see how the schedule and the makespan respond.</p>
+      <div class="table-wrap" style="margin-bottom:14px"><table id="ex-table"></table></div>
+      <div class="toolbar" style="margin:10px 0">
+        <label for="ex-perm">Sequence</label>
+        <input type="text" id="ex-perm" value="1 2 3 4 5" style="width:150px">
+        <button class="btn small" id="ex-eval">Evaluate</button>
+        <button class="btn small" id="ex-rand">Random order</button>
+        <button class="btn small" id="ex-neh">NEH heuristic</button>
+        <span id="ex-cmax" class="badge verified" style="font-size:.9rem"></span>
+      </div>
+      <div id="ex-gantt"></div>
+      <p class="small muted" style="margin-top:8px">Hover over a bar for its start and end times. The dashed line marks C<sub>max</sub>.
+        <span id="ex-opt"></span></p>
+
+      <h2 id="complexity">Complexity</h2>
+      <p>For <var>m</var> = 2 the problem is solved optimally in O(<var>n</var> log <var>n</var>) by Johnson's rule (Johnson, 1954).
+        For <var>m</var> ≥ 3 it is NP-hard in the strong sense (Garey, Johnson &amp; Sethi, 1976). The search space has
+        <var>n</var>! permutations, about 2.4·10<sup>18</sup> for <var>n</var> = 20 and 3·10<sup>64</sup> for <var>n</var> = 50.
+        Exact methods are mostly branch-and-bound algorithms. The best heuristics build on the NEH insertion heuristic
+        (Nawaz, Enscore &amp; Ham, 1983), accelerated with Taillard's (1990) technique, and run inside iterated-greedy
+        or local-search frameworks.</p>
+
+      <h2 id="bounds">Lower bounds, upper bounds and gaps</h2>
+      <p>Any feasible permutation gives an <strong>upper bound</strong> (UB) on the optimal makespan. A
+        <strong>lower bound</strong> (LB) must be <em>proven</em>, for example by one-machine bounds (head + machine
+        load + tail), two-machine bounds based on Johnson's rule (Lageweg, Lenstra &amp; Rinnooy Kan, 1978), the recent
+        polynomial-time prefix–suffix bounds <var>LB</var><sub><var>p</var>,<var>s</var></sub> (Alejandro-Soto, Segura &amp; Trejo-Sanchez, 2026),
+        or a complete branch-and-bound search.</p>
+      <dl class="meta">
+        <dt>Closed</dt><dd>LB = UB: the best-known solution is proven optimal.</dd>
+        <dt>Open</dt><dd>LB &lt; UB, or no lower bound is recorded.</dd>
+        <dt>Gap</dt><dd>100 · (UB − LB) / UB, in percent, as shown in the <a href="bounds.html">bounds table</a>.</dd>
+        <dt>RPD / ARPD</dt><dd>When comparing heuristics, the relative percentage deviation of a makespan <var>C</var> from the
+          best-known UB, 100 · (<var>C</var> − UB) / UB, averaged over instances.</dd>
+      </dl>
+
+      <h2 id="conventions">Conventions used on this site</h2>
+      <ul>
+        <li>Jobs and machines are numbered from <strong>1</strong>. Permutations list job indices in processing order.</li>
+        <li>Instance files use one format: the first line is <code>n m</code>, followed by <var>m</var> lines of
+          <var>n</var> integers (machine <var>i</var>'s processing times for jobs 1…<var>n</var>). See <a href="benchmarks.html#format">Benchmarks</a>.</li>
+        <li>An upper bound is listed only if its permutation is available and re-evaluates to that value.</li>
+      </ul>
+
+      <h2 id="refs">References</h2>
+      <ol class="ref-list small">
+        <li>J. A. Alejandro-Soto, C. Segura, J. A. Trejo-Sanchez (2026). Bounds for the permutation flowshop scheduling problem: New framework and theoretical insights. <em>Computers &amp; Operations Research</em> 191, 107445.</li>
+        <li>M. R. Garey, D. S. Johnson, R. Sethi (1976). The complexity of flowshop and jobshop scheduling. <em>Mathematics of Operations Research</em> 1(2), 117–129.</li>
+        <li>S. M. Johnson (1954). Optimal two- and three-stage production schedules with setup times included. <em>Naval Research Logistics Quarterly</em> 1(1), 61–68.</li>
+        <li>B. J. Lageweg, J. K. Lenstra, A. H. G. Rinnooy Kan (1978). A general bounding scheme for the permutation flow-shop problem. <em>Operations Research</em> 26(1), 53–67.</li>
+        <li>M. Nawaz, E. E. Enscore, I. Ham (1983). A heuristic algorithm for the m-machine, n-job flow-shop sequencing problem. <em>Omega</em> 11(1), 91–95.</li>
+        <li>E. Taillard (1990). Some efficient heuristic methods for the flow shop sequencing problem. <em>European Journal of Operational Research</em> 47(1), 65–74.</li>
+        <li>E. Taillard (1993). Benchmarks for basic scheduling problems. <em>European Journal of Operational Research</em> 64(2), 278–285.</li>
+        <li>E. Vallada, R. Ruiz, J. M. Framinan (2015). New hard benchmark for flowshop scheduling problems minimising makespan. <em>European Journal of Operational Research</em> 240(3), 666–677.</li>
+      </ol>
+    </article>
+    <aside class="toc card" aria-label="On this page">
+      <strong>On this page</strong>
+      <a href="#definition">Definition</a>
+      <a href="#recurrence">Evaluating a permutation</a>
+      <a href="#example">A small example</a>
+      <a href="#complexity">Complexity</a>
+      <a href="#bounds">Bounds and gaps</a>
+      <a href="#conventions">Conventions</a>
+      <a href="#refs">References</a>
+    </aside>
+  </div>
+</main>
+<script>
+(function () {
+  const P = window.PFSP;
+  // 3 machines × 5 jobs (machine-major)
+  const p = [[5, 9, 8, 10, 1], [9, 3, 10, 1, 8], [9, 4, 5, 8, 6]];
+  const n = 5, m = 3;
+  P.$("#ex-table").innerHTML = `<thead><tr><th>p<sub>ij</sub></th>${[...Array(n)].map((_, j) => `<th class="num">Job ${j + 1}</th>`).join("")}</tr></thead>
+    <tbody>${p.map((row, i) => `<tr><td>Machine ${i + 1}</td>${row.map((v) => `<td class="num">${v}</td>`).join("")}</tr>`).join("")}</tbody>`;
+
+  // brute-force optimum for the 5-job toy (120 permutations)
+  let best = Infinity;
+  (function permute(a, k) {
+    if (k === a.length) { best = Math.min(best, P.makespan(p, a)); return; }
+    for (let i = k; i < a.length; i++) { [a[k], a[i]] = [a[i], a[k]]; permute(a, k + 1); [a[k], a[i]] = [a[i], a[k]]; }
+  })([0, 1, 2, 3, 4], 0);
+
+  function show(perm) {
+    P.$("#ex-perm").value = perm.map((x) => x + 1).join(" ");
+    const sch = P.drawGantt(P.$("#ex-gantt"), p, perm);
+    P.$("#ex-cmax").textContent = "Cmax = " + sch.cmax;
+    P.$("#ex-opt").textContent = sch.cmax === best ? "This sequence is optimal." : `The optimum for this example is ${best}.`;
+  }
+  function neh() {
+    const order = [...Array(n).keys()].sort((a, b) => p.reduce((s, r) => s + r[b], 0) - p.reduce((s, r) => s + r[a], 0));
+    let seq = [];
+    for (const j of order) {
+      let bestSeq = null, bestC = Infinity;
+      for (let pos = 0; pos <= seq.length; pos++) {
+        const cand = [...seq.slice(0, pos), j, ...seq.slice(pos)];
+        const c = P.makespan(p, cand);
+        if (c < bestC) { bestC = c; bestSeq = cand; }
+      }
+      seq = bestSeq;
+    }
+    return seq;
+  }
+  P.$("#ex-eval").addEventListener("click", () => {
+    const r = P.parsePermutation(P.$("#ex-perm").value, n);
+    if (r.error) { P.toast(r.error); return; }
+    show(r.perm);
+  });
+  P.$("#ex-perm").addEventListener("keydown", (e) => { if (e.key === "Enter") P.$("#ex-eval").click(); });
+  P.$("#ex-rand").addEventListener("click", () => {
+    const a = [0, 1, 2, 3, 4];
+    for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; }
+    show(a);
+  });
+  P.$("#ex-neh").addEventListener("click", () => show(neh()));
+  show([0, 1, 2, 3, 4]);
+})();
+</script>
+</body>
+</html>

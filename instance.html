@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Instance — PFSP Benchmarks</title>
+  <meta name="description" content="Best-known lower and upper bound, permutation, schedule and references for a permutation flow shop benchmark instance.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main" class="container">
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script>
+(async function () {
+  const P = window.PFSP;
+  const view = P.$("#view");
+  let all, refs, sols, hist;
+  try { [all, refs, sols, hist] = await Promise.all([P.data.all(), P.data.refs(), P.data.solutions(), P.data.history()]); }
+  catch (e) { P.showError(view, e); return; }
+  const rec = P.findInstance(all, P.params().get("id"));
+  if (!rec) {
+    view.innerHTML = `<div class="page-head"><h1>Instance not found</h1><p class="lead">No instance is called
+      “${P.esc(P.params().get("id") || "")}”. Browse the <a href="bounds.html">bounds table</a> instead.</p></div>`;
+    return;
+  }
+  document.title = `${rec.id} — PFSP Benchmarks`;
+  const set = all.sets.find((s) => s.id === rec.set);
+  const siblings = all.instances.filter((r) => r.set === rec.set);
+  const pos = siblings.findIndex((r) => r.id === rec.id);
+  const prev = siblings[pos - 1], next = siblings[pos + 1];
+  const perm = sols[rec.id];
+  const h = hist.filter((x) => x.id === rec.id);
+  const mail = P.mailto(`[PFSP] New bound for ${rec.id}`,
+    `Instance: ${rec.id}\nNew bound type (UB / LB): \nValue: \nPermutation (1-based, for a UB): \nReference (paper / preprint / report, with DOI or URL): \nMethod and computing time (optional): \nName and affiliation: \n`);
+
+  view.innerHTML = `
+  <div class="page-head">
+    <p class="small muted" style="margin-bottom:.6em"><a href="bounds.html">Bounds</a> › <a href="bounds.html?set=${rec.set}">${P.esc(set.name)}</a> › ${P.esc(rec.id)}</p>
+    <div class="section-title">
+      <h1 style="margin-bottom:.2em">${P.esc(rec.id)}</h1>
+      <div class="btn-row">
+        ${prev ? `<a class="btn small" href="instance.html?id=${encodeURIComponent(prev.id)}" rel="prev">← ${P.esc(prev.id)}</a>` : ""}
+        ${next ? `<a class="btn small" href="instance.html?id=${encodeURIComponent(next.id)}" rel="next">${P.esc(next.id)} →</a>` : ""}
+      </div>
+    </div>
+    <div class="btn-row" style="gap:6px;margin-bottom:18px">
+      <span class="badge plain">${P.esc(set.name)}</span>
+      <span class="badge plain">n = ${rec.n} jobs</span>
+      <span class="badge plain">m = ${rec.m} machines</span>
+      ${P.statusBadge(rec.status)}
+    </div>
+  </div>
+
+  <div class="kv">
+    <div><div class="k">Lower bound</div><div class="v">${P.fmtInt(rec.lb)}</div></div>
+    <div><div class="k">Upper bound</div><div class="v">${P.fmtInt(rec.ub)}</div></div>
+    <div><div class="k">Gap</div><div class="v">${rec.status === "closed" ? "0%" : P.fmtGap(rec.gap)}</div></div>
+    <div><div class="k">Status</div><div class="v" style="color:var(--${rec.status})">${rec.status === "closed" ? "Optimal" : "Open"}</div></div>
+  </div>
+
+  <h2>Instance data</h2>
+  ${rec.file ? `<p>Plain-text file in the <a href="benchmarks.html#format">unified format</a>.</p>
+    <div class="btn-row"><a class="btn" href="${P.instanceUrl(rec)}" download>Download ${P.esc(rec.id)}.txt</a>
+    <a class="btn" href="checker.html?id=${encodeURIComponent(rec.id)}">Check a solution</a></div>`
+    : `<div class="notice warn"><p>The instance file is not hosted here yet.
+      Until then it is available from the original authors and the <a href="https://doi.org/10.5281/zenodo.4542886">Gmys (2021) dataset</a>.</p></div>`}
+  <p class="small" style="margin-top:14px">Improved this bound? <a href="${P.esc(mail)}">Email the maintainers</a> or read the <a href="submit.html">submission guidelines</a>.</p>
+
+  <h2>Sources</h2>
+  <dl class="meta">
+    <dt>Best upper bound</dt><dd>${rec.ubRef && refs[rec.ubRef] ? P.refFull(refs[rec.ubRef]) : "—"}</dd>
+    <dt>Best lower bound</dt><dd>${rec.lbRef && refs[rec.lbRef] ? P.refFull(refs[rec.lbRef]) : '<span class="muted">No lower bound is recorded for this instance yet.</span>'}</dd>
+    <dt>Benchmark</dt><dd>${P.refFull(refs[set.ref])}</dd>
+    <dt>Last change</dt><dd>${P.fmtDate(rec.updated)}</dd>
+  </dl>
+
+  <div class="section-title"><h2>Best-known solution</h2><span id="verify"></span></div>
+  ${perm ? `<div class="perm-box" id="perm">${P.esc(perm)}</div>
+    <div class="btn-row" style="margin-top:10px"><button class="btn small" id="copy-perm">Copy permutation</button>
+    <span class="small muted" style="align-self:center">Job indices start at 1, in processing order. Makespan ${P.fmtInt(rec.ub)}.</span></div>
+    <h3>Schedule</h3><div id="gantt"><div class="loading">Drawing…</div></div>`
+    : `<div class="notice"><p>No permutation is stored for this instance yet. The upper bound is taken from
+       ${rec.ubRef && refs[rec.ubRef] ? P.esc(refs[rec.ubRef].short) : "the literature"}, and the permutation will be added once it is available.</p></div>`}
+
+  ${h.length ? `<h2>Bound history</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Bound</th><th class="num">Old</th><th class="num">New</th><th>Source</th></tr></thead><tbody>
+    ${h.map((x) => `<tr><td>${P.fmtDate(x.date)}</td><td>${x.bound}</td><td class="num">${P.fmtInt(x.old)}</td><td class="num"><strong>${P.fmtInt(x.new)}</strong></td><td>${P.refShort(x.ref, refs)}</td></tr>`).join("")}
+    </tbody></table></div>` : ""}
+  `;
+
+  if (perm) {
+    P.$("#copy-perm").addEventListener("click", () => P.copy(perm, "Permutation copied"));
+    if (rec.file) {
+      try {
+        const inst = await P.loadMatrix(rec);
+        const pr = P.parsePermutation(perm, inst.n);
+        if (pr.error) throw new Error(pr.error);
+        const sch = P.drawGantt(P.$("#gantt"), inst.p, pr.perm);
+        P.$("#verify").innerHTML = sch.cmax === rec.ub
+          ? `<span class="badge verified" title="Recomputed in your browser from the instance data">✓ Re-evaluated in your browser: makespan ${P.fmtInt(sch.cmax)}</span>`
+          : `<span class="badge open">Re-evaluation gives ${P.fmtInt(sch.cmax)}</span>`;
+      } catch (e) { P.$("#gantt").innerHTML = `<div class="notice err"><p>${P.esc(e.message)}</p></div>`; }
+    } else {
+      P.$("#verify").innerHTML = '<span class="badge open" title="The permutation will be re-evaluated automatically once the instance file is hosted">Pending verification</span>';
+      P.$("#gantt").innerHTML = '<div class="notice warn"><p>This permutation is taken from the cited source and reproduces the listed upper bound there. It will be re-evaluated automatically, and the schedule drawn, once the instance file is hosted here.</p></div>';
+    }
+  }
+})();
+</script>
+</body>
+</html>

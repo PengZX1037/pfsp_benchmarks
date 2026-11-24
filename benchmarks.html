@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Benchmarks &amp; downloads — PFSP Benchmarks</title>
+  <meta name="description" content="Download the Taillard and VRF permutation flow shop benchmark instances, best-known bounds and permutations.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="page-head">
+    <div class="eyebrow">Data</div>
+    <h1>Benchmarks &amp; downloads</h1>
+    <p class="lead">These are the two benchmark sets most widely used for <var>F<sub>m</sub></var> | prmu | <var>C</var><sub>max</sub>.
+      All files are plain text and free to reuse with attribution.</p>
+  </div>
+
+  <div class="card">
+    <h3>Everything at a glance</h3>
+    <div class="btn-row">
+      <a class="btn primary" href="downloads/pfsp-bounds.csv" download>Bounds, all instances (CSV)</a>
+      <a class="btn" href="downloads/pfsp-bounds.json" download>Bounds (JSON)</a>
+      <a class="btn" href="downloads/pfsp-solutions.csv" download>Best-known permutations (CSV)</a>
+      <a class="btn" href="downloads/references.bib" download>References (BibTeX)</a>
+    </div>
+    <p class="small muted" style="margin:12px 0 0" id="dl-note"></p>
+  </div>
+
+  <div id="sets"><div class="loading">Loading…</div></div>
+
+  <h2 id="format">File formats</h2>
+  <div class="grid grid-2">
+    <div>
+      <h3>Instance files</h3>
+      <p>One instance per text file. The first line holds <code>n m</code> (jobs, machines). It is followed by
+        <var>m</var> lines with <var>n</var> integers each, where line <var>i</var> lists the processing times of jobs
+        1…<var>n</var> on machine <var>i</var>. This is the orientation of Taillard's original tables. The first lines of
+        <a href="data/instances/taillard/ta001.txt">ta001.txt</a>:</p>
+      <pre id="ta001"><code>…</code></pre>
+    </div>
+    <div>
+      <h3>Bounds file</h3>
+      <p><code>pfsp-bounds.csv</code> has one row per instance:</p>
+      <dl class="meta small">
+        <dt><code>instance</code></dt><dd>name (<code>ta001</code>…<code>ta120</code>, <code>VRF10_5_1</code>…)</dd>
+        <dt><code>set</code></dt><dd><code>taillard</code>, <code>vrf-small</code>, <code>vrf-large</code></dd>
+        <dt><code>n</code>, <code>m</code></dt><dd>jobs, machines</dd>
+        <dt><code>LB</code>, <code>UB</code></dt><dd>best-known lower / upper bound (LB empty if none is recorded)</dd>
+        <dt><code>gap_percent</code></dt><dd>100·(UB−LB)/UB</dd>
+        <dt><code>status</code></dt><dd><code>closed</code> (LB = UB) or <code>open</code></dd>
+        <dt><code>LB_ref</code>, <code>UB_ref</code></dt><dd>reference keys, resolved in <code>references.bib</code></dd>
+        <dt><code>updated</code></dt><dd>date of the last change (ISO 8601)</dd>
+      </dl>
+      <p class="small" style="margin-top:1em"><code>pfsp-solutions.csv</code> holds <code>instance, makespan, ref, permutation</code>, with job indices from 1.</p>
+    </div>
+  </div>
+  <p class="small muted">VRF instance names follow the upstream files (<code>VRF</code><var>n</var><code>_</code><var>m</var><code>_</code><var>k</var>).
+    The benchmark itself is usually called VRF after its authors.</p>
+</main>
+<script>
+(async function () {
+  const P = window.PFSP;
+  const box = P.$("#sets");
+  try {
+    const [all, refs] = await Promise.all([P.data.all(), P.data.refs()]);
+    P.$("#dl-note").textContent = `Data as of ${P.fmtDate(all.meta.lastUpdate)}. ${all.instances.filter((r) => r.solution).length} of ${all.instances.length} instances ship with a best-known permutation; ${all.instances.filter((r) => r.verified).length} of these are already re-evaluated against hosted instance data.`;
+    box.innerHTML = all.sets.map((s) => {
+      const ref = refs[s.ref];
+      const filesOk = s.files === s.count;
+      const rows = s.classes.map((c) => `<tr>
+          <td><a href="bounds.html?set=${s.id}&size=${encodeURIComponent(c.size)}">${c.size}</a></td>
+          <td class="num">${c.count}</td><td class="num">${c.closed}</td><td class="num">${c.count - c.closed}</td>
+          <td class="num">${c.withLB}</td><td class="num">${c.avgGap === null ? "—" : c.avgGap.toFixed(2) + "%"}</td></tr>`).join("");
+      return `<section id="${s.id}">
+        <h2>${P.esc(s.name)} <span class="badge plain" style="vertical-align:middle">${s.count} instances</span></h2>
+        <div class="grid grid-2">
+          <div>
+            <p>${P.esc(s.description)}</p>
+            <p class="small"><strong>Original reference:</strong> ${P.refFull(ref)}</p>
+            <div class="btn-row" style="margin:14px 0">
+              ${filesOk ? `<a class="btn primary" href="downloads/${s.id}-instances.zip" download>Instances (.zip)</a>`
+                : `<span class="btn disabled" aria-disabled="true">Instances (.zip)</span>`}
+              <a class="btn" href="bounds.html?set=${s.id}">Bounds table</a>
+            </div>
+            ${filesOk ? "" : `<div class="notice warn small"><p>Instance files for this set will be published here shortly. Until then the data is available from the
+              original authors and from the <a href="https://doi.org/10.5281/zenodo.4542886">Gmys (2021) dataset</a>.</p></div>`}
+            ${s.id === "taillard" ? `<p class="small muted">The files are regenerated from Taillard's published seeds with his
+              generator (<code>tools/pfsp.py</code>), and the generator reproduces the published data exactly.</p>` : ""}
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>n × m</th><th class="num">Inst.</th><th class="num">Closed</th><th class="num">Open</th><th class="num">With LB</th><th class="num">Avg gap</th></tr></thead>
+            <tbody>${rows}</tbody></table></div>
+        </div></section>`;
+    }).join("");
+    if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+  } catch (e) { P.showError(box, e); }
+  try {
+    const t = await (await fetch("data/instances/taillard/ta001.txt")).text();
+    P.$("#ta001 code").textContent = t.split("\n").slice(0, 6).map((l) => l.length > 70 ? l.slice(0, 70) + " …" : l).join("\n");
+  } catch (e) { /* optional */ }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PFSP Benchmarks — best-known bounds for the permutation flow shop</title>
+  <meta name="description" content="A maintained repository of benchmark instances, lower and upper bounds, proven optima and references for the permutation flow shop scheduling problem (Taillard, VRF).">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main">
+  <section class="hero container">
+    <div class="eyebrow">Permutation flow shop · <span class="notation">F<sub>m</sub> | prmu | C<sub>max</sub></span></div>
+    <h1>Best-known bounds for the permutation flow shop scheduling problem</h1>
+    <p class="lead">Benchmark instances, lower and upper bounds, proven optima and the papers behind them for the
+      Taillard and VRF benchmarks. All of it can be downloaded and cited, and it is kept up to date with the literature.</p>
+    <form class="hero-search" id="jump" role="search">
+      <input type="search" id="jump-q" placeholder="Go to an instance, e.g. ta056 or VRF100_60_3" aria-label="Instance name" list="inst-list" autocomplete="off">
+      <datalist id="inst-list"></datalist>
+      <button class="btn primary" type="submit">Open</button>
+    </form>
+    <p class="small muted" id="last-update" style="margin-top:14px"></p>
+  </section>
+
+  <section class="container">
+    <div class="grid grid-3" id="set-cards"><div class="loading">Loading…</div></div>
+  </section>
+
+  <section class="container">
+    <h2>What you will find here</h2>
+    <div class="grid grid-3">
+      <a class="card" href="bounds.html" style="text-decoration:none;color:inherit">
+        <h3>Bounds table</h3>
+        <p class="muted">LB, UB, gap and optimality status for all 600 instances, with the reference for every bound. You can sort, filter and export it.</p></a>
+      <a class="card" href="benchmarks.html" style="text-decoration:none;color:inherit">
+        <h3>Benchmark downloads</h3>
+        <p class="muted">Instance files in one simple documented format, plus the bounds and best-known permutations as CSV and JSON.</p></a>
+      <a class="card" href="checker.html" style="text-decoration:none;color:inherit">
+        <h3>Solution checker</h3>
+        <p class="muted">Paste a permutation to compute its makespan in your browser and compare it with the best-known bounds.</p></a>
+    </div>
+  </section>
+
+  <section class="container">
+    <div class="grid grid-2" style="margin-top:8px">
+      <div>
+        <h2>How to cite</h2>
+        <p class="muted">If you use these bounds, please cite this repository <em>and</em> the papers that established them.
+          Each instance page lists those papers, and <a href="downloads/references.bib">references.bib</a> collects them all.</p>
+        <pre id="cite"><code></code></pre>
+        <button class="btn small" id="copy-cite">Copy BibTeX</button>
+      </div>
+      <div>
+        <h2>Found a better solution?</h2>
+        <p class="muted">Email it to <a id="mail" href="#"></a>. New upper bounds are accepted only with their permutation,
+          which is re-evaluated automatically. New lower bounds need a citable document describing the method.</p>
+        <p><a href="submit.html">Submission guidelines →</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+(async function () {
+  const P = window.PFSP;
+  P.$("#cite code").textContent = P.siteCitation();
+  P.$("#copy-cite").addEventListener("click", () => P.copy(P.siteCitation(), "BibTeX copied"));
+  const mail = P.$("#mail"); mail.href = "mailto:" + P.SITE.email; mail.textContent = P.SITE.email;
+  try {
+    const all = await P.data.all();
+    P.$("#last-update").textContent = "Last data update: " + P.fmtDate(all.meta.lastUpdate) + " · " + all.instances.length + " instances";
+    P.$("#inst-list").innerHTML = all.instances.map((r) => `<option value="${r.id}">`).join("");
+    P.$("#jump").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const r = P.findInstance(all, P.$("#jump-q").value);
+      if (r) location.href = "instance.html?id=" + encodeURIComponent(r.id);
+      else P.toast("No instance with that name");
+    });
+    P.$("#set-cards").innerHTML = all.sets.map((s) => {
+      const open = s.count - s.closed, pct = (100 * s.closed / s.count).toFixed(1);
+      return `<div class="card">
+        <div class="section-title"><h3 style="margin:0">${P.esc(s.name)}</h3><span class="badge plain">${P.esc(s.sizes)}</span></div>
+        <div class="stats-row">
+          <div class="stat"><span class="v">${s.count}</span><span class="k">instances</span></div>
+          <div class="stat"><span class="v" style="color:var(--closed)">${s.closed}</span><span class="k">closed</span></div>
+          <div class="stat"><span class="v" style="color:var(--open)">${open}</span><span class="k">open</span></div>
+        </div>
+        <div class="progress" role="img" aria-label="${pct}% closed"><span style="width:${pct}%"></span></div>
+        <div class="legend"><span><i style="background:var(--closed)"></i>closed ${pct}%</span><span><i style="background:var(--open-soft);border:1px solid var(--open)"></i>open</span></div>
+        <p style="margin:14px 0 0" class="small"><a href="bounds.html?set=${s.id}">View bounds →</a> &nbsp; <a href="benchmarks.html#${s.id}">Download →</a></p>
+      </div>`;
+    }).join("");
+
+  } catch (e) { P.showError(P.$("#set-cards"), e); }
+})();
+</script>
+</body>
+</html>

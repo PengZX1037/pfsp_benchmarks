@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submit a new bound — PFSP Benchmarks</title>
+  <meta name="description" content="How to report a new best-known upper bound, lower bound or proof of optimality for a permutation flow shop benchmark instance.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="page-head">
+    <div class="eyebrow">Contribute</div>
+    <h1>Submit a new bound</h1>
+    <p class="lead">Improved an upper bound, proved a better lower bound or closed an instance? Tell us, and we will
+      check it and credit you on this site.</p>
+  </div>
+
+  <div class="grid grid-2">
+    <div>
+      <h2 style="margin-top:0">What to send</h2>
+      <div class="card" style="margin-bottom:16px">
+        <h3>New upper bound</h3>
+        <ul>
+          <li>Instance name and the new makespan.</li>
+          <li><strong>The permutation (required)</strong>, with job indices starting at 1. We re-evaluate it automatically, and a
+            UB is never listed without a permutation that reproduces it.</li>
+          <li>A reference if one exists (paper, preprint, technical report or dataset DOI). Otherwise we credit the name
+            and affiliation you give us.</li>
+        </ul>
+        <p class="small muted" style="margin:0">Tip: run it through the <a href="checker.html">solution checker</a> first. If it
+          beats the current UB, the checker prepares the email for you.</p>
+      </div>
+      <div class="card">
+        <h3>New lower bound or proof of optimality</h3>
+        <ul>
+          <li>Instance name and the new LB.</li>
+          <li><strong>A citable document</strong> (paper, preprint or report) that describes the method and the
+            computation, e.g. the bounding scheme, B&amp;B statistics and run time. Logs or certificates are welcome.</li>
+          <li>LB = UB closes the instance, which will then be marked <span class="badge closed">Closed</span>.</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <h2 style="margin-top:0">Send it</h2>
+      <p>Email <a id="mail-link" href="#"></a> with the subject <code>[PFSP] New bound for &lt;instance&gt;</code>.
+        For several instances, attach a CSV with the columns <code>instance, type, value, permutation, reference</code>.</p>
+      <pre id="tpl"><code></code></pre>
+      <div class="btn-row">
+        <a class="btn primary" id="mail-btn" href="#">Open email draft</a>
+        <button class="btn" id="copy-tpl">Copy template</button>
+      </div>
+
+    </div>
+  </div>
+
+  <h2>What happens next</h2>
+  <ol class="steps narrow">
+    <li><strong>Automatic verification</strong> The permutation is evaluated against the instance data, and any mismatch is rejected.</li>
+    <li><strong>Review</strong> A maintainer checks the reference (for LBs, the method), usually within a few days.</li>
+    <li><strong>Publication</strong> The new bound appears in the tables and on the instance page with its source, and is recorded in the
+      instance's bound history.</li>
+    <li><strong>Archiving</strong> Periodic data releases are archived with a DOI, so papers can cite the exact version they used.</li>
+  </ol>
+
+  <div class="notice warn narrow"><p><strong>Please note:</strong> bounds are attributed to the first public source we can
+    verify. If you believe a bound is mis-attributed or a lower bound is wrong, please write to us. Corrections are
+    as valuable as improvements.</p></div>
+</main>
+<script>
+(function () {
+  const P = window.PFSP;
+  const tpl = `Instance: \nBound type (UB / LB): \nNew value: \nPrevious value: \nPermutation (1-based, required for a UB): \nReference (DOI / URL), if any: \nMethod and computing time (optional): \nName and affiliation: \n`;
+  P.$("#tpl code").textContent = tpl;
+  const a = P.$("#mail-link"); a.href = "mailto:" + P.SITE.email; a.textContent = P.SITE.email;
+  P.$("#mail-btn").href = P.mailto("[PFSP] New bound for <instance>", tpl);
+  P.$("#copy-tpl").addEventListener("click", () => P.copy(tpl, "Template copied"));
+})();
+</script>
+</body>
+</html>

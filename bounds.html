@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bounds table — PFSP Benchmarks</title>
+  <meta name="description" content="Lower bounds, upper bounds, gaps, optimality status and references for every Taillard and VRF permutation flow shop instance.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+</head>
+<body>
+<main id="main" class="container">
+  <div class="page-head">
+    <div class="eyebrow">Best-known solutions</div>
+    <h1>Bounds table</h1>
+    <p class="lead">Every instance with its best-known lower and upper bound, the gap between them, and the source of each bound.
+      Click a row for details, the permutation and its Gantt chart.</p>
+  </div>
+
+  <div class="toolbar" role="group" aria-label="Filters">
+    <div class="seg" id="f-set">
+      <button data-v="" aria-pressed="true">All sets</button>
+      <button data-v="taillard" aria-pressed="false">Taillard</button>
+      <button data-v="vrf-small" aria-pressed="false">VRF small</button>
+      <button data-v="vrf-large" aria-pressed="false">VRF large</button>
+    </div>
+    <div class="seg" id="f-status">
+      <button data-v="" aria-pressed="true">All</button>
+      <button data-v="open" aria-pressed="false">Open</button>
+      <button data-v="closed" aria-pressed="false">Closed</button>
+    </div>
+    <select id="f-size" aria-label="Size class"><option value="">All sizes</option></select>
+    <input type="search" id="f-q" class="grow" placeholder="Search instance or reference…" aria-label="Search">
+    <button class="btn" id="export" title="Download the rows currently shown">Export CSV</button>
+  </div>
+  <p class="count-line" id="count" aria-live="polite"></p>
+
+  <div class="table-wrap table-scroll">
+    <table id="tbl">
+      <thead><tr>
+        <th class="sortable" data-k="idx">Instance<span class="arrow">▲▼</span></th>
+        <th class="sortable" data-k="set">Set<span class="arrow">▲▼</span></th>
+        <th class="sortable" data-k="size">n × m<span class="arrow">▲▼</span></th>
+        <th class="sortable num" data-k="lb">LB<span class="arrow">▲▼</span></th>
+        <th class="sortable num" data-k="ub">UB<span class="arrow">▲▼</span></th>
+        <th class="sortable num" data-k="gap">Gap<span class="arrow">▲▼</span></th>
+        <th class="sortable" data-k="status">Status<span class="arrow">▲▼</span></th>
+        <th>Best UB source</th>
+        <th>Best LB source</th>
+        <th class="sortable" data-k="updated">Updated<span class="arrow">▲▼</span></th>
+      </tr></thead>
+      <tbody><tr><td colspan="10" class="loading">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="small muted" style="margin-top:12px">Gap = 100·(UB − LB)/UB. “Closed” means LB = UB (proven optimal).
+    Gaps of open instances depend on the strength of the best published lower bound; see each instance page for its source.</p>
+</main>
+<script>
+(async function () {
+  const P = window.PFSP;
+  const tbody = P.$("#tbl tbody");
+  let all, refs;
+  try { [all, refs] = await Promise.all([P.data.all(), P.data.refs()]); }
+  catch (e) { P.showError(P.$("#count"), e); tbody.innerHTML = ""; return; }
+
+  const setShort = Object.fromEntries(all.sets.map((s) => [s.id, s.name]));
+  const rows = all.instances.map((r, idx) => ({ ...r, idx, size: `${r.n}×${r.m}` }));
+  const url = P.params();
+  const state = { set: url.get("set") || "", status: url.get("status") || "", size: url.get("size") || "", q: url.get("q") || "", sort: "idx", dir: 1 };
+
+  function sizesFor(set) {
+    const seen = new Map();
+    rows.filter((r) => !set || r.set === set).forEach((r) => seen.set(r.size, [r.n, r.m]));
+    return [...seen.entries()].sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]).map((e) => e[0]);
+  }
+  function fillSizes() {
+    const sel = P.$("#f-size");
+    const sizes = sizesFor(state.set);
+    if (state.size && !sizes.includes(state.size)) state.size = "";
+    sel.innerHTML = '<option value="">All sizes</option>' + sizes.map((s) => `<option${s === state.size ? " selected" : ""}>${s}</option>`).join("");
+  }
+  function setSeg(id, v) { P.$$(`#${id} button`).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v))); }
+
+  function filtered() {
+    const q = state.q.trim().toLowerCase();
+    let out = rows.filter((r) => (!state.set || r.set === state.set) && (!state.status || r.status === state.status) &&
+      (!state.size || r.size === state.size) &&
+      (!q || r.id.toLowerCase().includes(q) || [r.ubRef, r.lbRef].some((k) => k && refs[k] && (refs[k].short + " " + refs[k].tag).toLowerCase().includes(q))));
+    const k = state.sort, d = state.dir;
+    const val = (r) => k === "size" ? r.n * 1000 + r.m : k === "gap" ? (r.gap ?? 1e9) : k === "lb" ? (r.lb ?? -1) : r[k];
+    out.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : a.idx - b.idx) * d; });
+    return out;
+  }
+  function render() {
+    const out = filtered();
+    const closed = out.filter((r) => r.status === "closed").length;
+    const gaps = out.filter((r) => r.gap !== null && r.status === "open").map((r) => r.gap);
+    P.$("#count").innerHTML = `<strong>${out.length}</strong> instance${out.length === 1 ? "" : "s"} · ${closed} closed · ${out.length - closed} open` +
+      (gaps.length ? ` · average gap of open instances with an LB: ${(gaps.reduce((a, b) => a + b, 0) / gaps.length).toFixed(2)}%` : "");
+    tbody.innerHTML = out.length ? out.map((r) => `<tr class="clickable" data-id="${P.esc(r.id)}">
+      <td><a class="id" href="instance.html?id=${encodeURIComponent(r.id)}">${P.esc(r.id)}</a></td>
+      <td>${P.esc(setShort[r.set])}</td><td>${r.size}</td>
+      <td class="num">${P.fmtInt(r.lb)}</td><td class="num"><strong>${P.fmtInt(r.ub)}</strong></td>
+      <td class="num">${r.status === "closed" ? '<span class="dim">0</span>' : P.fmtGap(r.gap)}</td>
+      <td>${P.statusBadge(r.status)}</td>
+      <td>${P.refShort(r.ubRef, refs, true)}</td><td>${P.refShort(r.lbRef, refs, true)}</td>
+      <td class="dim">${r.updated}</td></tr>`).join("")
+      : '<tr><td colspan="10" class="loading">No instance matches these filters.</td></tr>';
+    P.$$("#tbl th.sortable").forEach((th) => {
+      if (th.dataset.k === state.sort) th.setAttribute("aria-sort", state.dir === 1 ? "ascending" : "descending");
+      else th.removeAttribute("aria-sort");
+      th.querySelector(".arrow").textContent = th.dataset.k === state.sort ? (state.dir === 1 ? "▲" : "▼") : "▲▼";
+    });
+    const qs = new URLSearchParams();
+    ["set", "status", "size", "q"].forEach((k) => state[k] && qs.set(k, state[k]));
+    history.replaceState(null, "", location.pathname + (qs.toString() ? "?" + qs : ""));
+    return out;
+  }
+
+  P.$("#f-set").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; state.set = b.dataset.v; setSeg("f-set", state.set); fillSizes(); render(); });
+  P.$("#f-status").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; state.status = b.dataset.v; setSeg("f-status", state.status); render(); });
+  P.$("#f-size").addEventListener("change", (e) => { state.size = e.target.value; render(); });
+  let qt; P.$("#f-q").addEventListener("input", (e) => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value; render(); }, 120); });
+  P.$$("#tbl th.sortable").forEach((th) => th.addEventListener("click", () => {
+    if (state.sort === th.dataset.k) state.dir *= -1; else { state.sort = th.dataset.k; state.dir = 1; }
+    render();
+  }));
+  tbody.addEventListener("click", (e) => {
+    if (e.target.closest("a")) return;
+    const tr = e.target.closest("tr[data-id]");
+    if (tr) location.href = "instance.html?id=" + encodeURIComponent(tr.dataset.id);
+  });
+  P.$("#export").addEventListener("click", () => {
+    const out = filtered();
+    const head = "instance,set,n,m,LB,UB,gap_percent,status,LB_ref,UB_ref,updated";
+    const lines = out.map((r) => [r.id, r.set, r.n, r.m, r.lb ?? "", r.ub, r.gap ?? "", r.status, r.lbRef ?? "", r.ubRef, r.updated].join(","));
+    const blob = new Blob([head + "\n" + lines.join("\n") + "\n"], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "pfsp-bounds-filtered.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  setSeg("f-set", state.set); setSeg("f-status", state.status);
+  P.$("#f-q").value = state.q;
+  fillSizes();
+  render();
+})();
+</script>
+</body>
+</html>
